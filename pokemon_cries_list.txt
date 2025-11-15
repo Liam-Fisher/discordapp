@@ -1,21 +1,4 @@
-/**
- * Application constants
- * Contains constant arrays and configuration values
- */
-
-/**
- * Discord command names
- */
-export const COMMAND_NAMES = {
-  PKMN: "pkmn",
-} as const;
-
-/**
- * Array of sample names
- * Each sample can be accessed by index or by searching for name
- */
-
-export const pkmn: string[] = [
+const cries = [
 "abomasnow-mega"
 ,"absol-mega"
 ,"accelgor"
