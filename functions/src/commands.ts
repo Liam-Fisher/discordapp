@@ -5,9 +5,9 @@
 
 import {InteractionType, InteractionResponseType} from "discord-interactions";
 import * as logger from "firebase-functions/logger";
-import {bucket} from "./firebase";
+import {bucket, db} from "./firebase";
 import {formatSampleEmbed, formatErrorResponse} from "./discord";
-import {samples, COMMAND_NAMES} from "./constants";
+import {pkmn, COMMAND_NAMES} from "./constants";
 
 /**
  * Main command handler - routes interactions to appropriate handlers
@@ -30,8 +30,8 @@ export async function handleCommand(interaction: any): Promise<object> {
 
     // Route to appropriate command handler
     switch (commandName) {
-      case COMMAND_NAMES.SAMPLE:
-        return handleSampleCommand(interaction);
+      case COMMAND_NAMES.PKMN:
+        return handlePkmnCommand(interaction);
       default:
         return formatErrorResponse(`Unknown command: ${commandName}`);
     }
@@ -41,38 +41,80 @@ export async function handleCommand(interaction: any): Promise<object> {
 }
 
 /**
- * Handles the /sample command
+ * Handles the /pkmn command
+ * Fetches Pokemon sprite and cry from Firebase Storage
  * @param {any} interaction - The Discord interaction object
  * @return {Promise<object>} Discord interaction response
  */
-async function handleSampleCommand(interaction: any): Promise<object> {
+async function handlePkmnCommand(interaction: any): Promise<object> {
   try {
-    // Get the sample name from command options
+    // Get the Pokemon name from command options
     const options = interaction.data.options || [];
     const nameOption = options.find((opt: any) => opt.name === "name");
 
     if (!nameOption || !nameOption.value) {
-      return formatErrorResponse("Please provide a sample name");
+      return formatErrorResponse("Please provide a Pokemon name");
     }
 
-    const sampleName = nameOption.value;
+    const pokemonName = nameOption.value.toLowerCase();
 
-    // Check if sample exists in our constants array
-    if (!samples.includes(sampleName)) {
+    // Check if Pokemon exists in our constants array
+    if (!pkmn.includes(pokemonName)) {
       return formatErrorResponse(
-        `Sample "${sampleName}" not found. Available samples: ${samples.join(", ")}`
+        `Pokemon "${pokemonName}" not found. Try checking the spelling!`
       );
     }
 
-    // Get file URLs from Firebase Storage
-    const audioUrl = await getFileUrl(`samples/${sampleName}.mp3`);
-    const imageUrl = await getFileUrl(`samples/${sampleName}.png`);
+    // Get Pokemon media URLs from Firebase Storage
+    const {sprite, cry} = await getPokemonMedia(pokemonName);
 
     // Return formatted embed response
-    return formatSampleEmbed(sampleName, audioUrl, imageUrl);
+    return formatSampleEmbed(pokemonName, cry, sprite);
   } catch (error) {
-    logger.error("Error in handleSampleCommand:", error);
-    return formatErrorResponse("Failed to fetch sample files");
+    logger.error("Error in handlePkmnCommand:", error);
+    return formatErrorResponse("Failed to fetch Pokemon media");
+  }
+}
+
+/**
+ * Gets Pokemon sprite and cry URLs from Firebase Storage
+ * Translation of the old Angular FirebaseLoaderService.addPokemonMedia()
+ * Now uses firebase-admin instead of @angular/fire
+ * @param {string} name - Pokemon name (lowercase, hyphenated)
+ * @return {Promise<{sprite: string, cry: string}>} URLs for sprite and cry
+ */
+async function getPokemonMedia(name: string): Promise<{sprite?: string, cry?: string}> {
+  try {
+    // Get references to the files
+    // Note: Pokemon names use index for sprites, but name for cries
+    // For now, using name for both - adjust if you have index mapping
+    const spriteFile = bucket.file(`sprites/${name}.png`);
+    const cryFile = bucket.file(`cries/${name}.mp3`);
+
+    // Get URLs for the files
+    const sprite = await getFileUrl(`sprites/${name}.png`);
+    const cry = await getFileUrl(`cries/${name}.mp3`);
+
+    return {sprite, cry};
+  } catch (error) {
+    logger.error(`Error getting Pokemon media for ${name}:`, error);
+    return {};
+  }
+}
+
+/**
+ * Gets Pokemon data from Firestore
+ * Translation of the old Angular FirebaseLoaderService Firestore methods
+ * @return {Promise<any>} Pokemon data from Firestore
+ */
+async function getPokemonData(): Promise<any> {
+  try {
+    const doc = await db.doc("lists/media").get();
+    const docData = doc.data() ?? {};
+    return docData;
+  } catch (error) {
+    logger.error("Error getting Pokemon data from Firestore:", error);
+    return {};
   }
 }
 
