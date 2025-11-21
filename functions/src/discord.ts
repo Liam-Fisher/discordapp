@@ -42,7 +42,7 @@ export function formatSampleEmbed(
 /**
  * Formats a simple text response
  * @param {string} message - The message to send
- * @param {boolean} ephemeral - Whether the message should be ephemeral (only visible to user)
+ * @param {boolean} ephemeral - Whether message is ephemeral
  * @return {object} Discord interaction response object
  */
 export function formatTextResponse(message: string, ephemeral = false) {

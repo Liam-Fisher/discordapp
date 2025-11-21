@@ -1,0 +1,60 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build and Deploy to Firebase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./functions
+        run: npm ci
+
+      - name: Lint code
+        working-directory: ./functions
+        run: npm run lint
+
+      - name: Build functions
+        working-directory: ./functions
+        run: npm run build
+
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only functions --project singular-array-387200
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set Firebase environment variables
+        uses: w9jds/firebase-action@master
+        with:
+          args: functions:config:set discord.public_key="${{ secrets.DISCORD_PUBLIC_KEY }}" discord.app_id="${{ secrets.DISCORD_APP_ID }}" discord.token="${{ secrets.DISCORD_TOKEN }}" --project singular-array-387200
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo ""
+          echo "📋 Next steps:"
+          echo "1. Copy the Cloud Function URL from Firebase Console"
+          echo "2. Paste it into Discord Developer Portal > Interactions Endpoint URL"
+          echo "3. Run 'npm run register-commands' locally to register slash commands"
+          echo ""
+          echo "🔗 Function URL format:"
+          echo "   https://us-central1-singular-array-387200.cloudfunctions.net/api"

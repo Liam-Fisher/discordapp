@@ -15,6 +15,7 @@ export const COMMAND_NAMES = {
  * Each sample can be accessed by index or by searching for name
  */
 
+/* eslint-disable comma-style, comma-spacing, indent, comma-dangle, eol-last */
 export const pkmn: string[] = [
 "abomasnow-mega"
 ,"absol-mega"
